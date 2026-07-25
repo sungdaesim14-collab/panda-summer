@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sabu } from "../components/Sabu";
 import { Char } from "../components/Char";
+import { CaveView } from "./CaveView";
 import { getStore, type FriendView } from "../data/store";
 import { fx } from "../game/feedback";
 import { CHARS, type CharKey } from "../art/chars";
@@ -17,10 +18,29 @@ export function FriendsScreen({ data }: Props) {
   const me = data.user.nickname;
   const [friends, setFriends] = useState<FriendView[] | null>(null);
   const [cheered, setCheered] = useState<Set<string>>(loadCheers());
+  const [caveOf, setCaveOf] = useState<SaveData | null>(null);
+  const [loadingCave, setLoadingCave] = useState<string | null>(null);
 
   useEffect(() => {
     store.friends(me).then(setFriends);
   }, [store, me]);
+
+  // 친구 동굴 구경 중이면 그 화면만
+  if (caveOf) {
+    return (
+      <div style={{ maxWidth: 460, margin: "0 auto" }}>
+        <CaveView data={caveOf} onBack={() => setCaveOf(null)} />
+      </div>
+    );
+  }
+
+  const visitCave = async (nick: string) => {
+    setLoadingCave(nick);
+    fx.tap();
+    const d = nick === me ? data : await store.load(nick);
+    setLoadingCave(null);
+    if (d) setCaveOf(d);
+  };
 
   if (!friends) {
     return <div style={{ maxWidth: 460, margin: "0 auto" }}><Sabu>동문들을 불러오는 중…</Sabu></div>;
@@ -64,13 +84,18 @@ export function FriendsScreen({ data }: Props) {
                 {CHARS[(f.character as CharKey) in CHARS ? (f.character as CharKey) : "panda"].short} 검객 · 🔥{f.streak}일 연속
               </div>
             </div>
-            <button
-              onClick={() => cheer(f.nickname)}
-              disabled={cheered.has(f.nickname)}
-              style={cheerBtn(cheered.has(f.nickname))}
-            >
-              {cheered.has(f.nickname) ? "응원 완료 💚" : "응원 보내기"}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+              <button
+                onClick={() => cheer(f.nickname)}
+                disabled={cheered.has(f.nickname)}
+                style={cheerBtn(cheered.has(f.nickname))}
+              >
+                {cheered.has(f.nickname) ? "응원 완료 💚" : "응원 보내기"}
+              </button>
+              <button onClick={() => visitCave(f.nickname)} disabled={loadingCave === f.nickname} style={visitBtn}>
+                {loadingCave === f.nickname ? "여는 중…" : "🕳️ 동굴 구경"}
+              </button>
+            </div>
           </div>
         ))
       )}
@@ -111,10 +136,15 @@ const groupBanner: React.CSSProperties = {
 };
 function cheerBtn(done: boolean): React.CSSProperties {
   return {
-    flexShrink: 0, padding: "9px 14px", borderRadius: "var(--r-pill)",
+    flexShrink: 0, padding: "8px 14px", borderRadius: "var(--r-pill)",
     border: `1px solid ${done ? "var(--edge)" : "var(--bamboo)"}`,
     background: done ? "transparent" : "rgba(95,179,124,0.12)",
     color: done ? "var(--ink-3)" : "var(--bamboo)",
-    fontSize: 12.5, fontWeight: 700, cursor: done ? "default" : "pointer",
+    fontSize: 12.5, fontWeight: 700, cursor: done ? "default" : "pointer", whiteSpace: "nowrap",
   };
 }
+const visitBtn: React.CSSProperties = {
+  flexShrink: 0, padding: "8px 14px", borderRadius: "var(--r-pill)",
+  border: "1px solid var(--edge)", background: "transparent",
+  color: "var(--ink-2)", fontSize: 12.5, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+};
