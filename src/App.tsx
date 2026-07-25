@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Char } from "./components/Char";
-import { CHAR_LIST, GRADES, type CharKey } from "./art/chars";
+import { CHAR_LIST, type CharKey } from "./art/chars";
 import { BossScreen } from "./screens/BossScreen";
 import { DexScreen } from "./screens/DexScreen";
 import { TrainScreen } from "./screens/TrainScreen";
 import { MountainScreen } from "./screens/MountainScreen";
 import { RecordScreen } from "./screens/RecordScreen";
 import { FriendsScreen } from "./screens/FriendsScreen";
+import { KataScreen } from "./screens/KataScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CharSelectScreen } from "./screens/CharSelectScreen";
 import { useGame, totalDaysOf, streakDaysOf } from "./data/useGame";
@@ -31,7 +32,7 @@ export function App() {
 }
 
 function Home({ game }: { game: ReturnType<typeof useGame> }) {
-  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "friends" | "record" | "boss" | "chars" | "lab">("train");
+  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "kata" | "friends" | "record" | "boss" | "lab">("train");
   const data = game.auth.phase === "ready" ? game.auth.data : null;
   if (!data) return null;
 
@@ -61,8 +62,8 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
 
       <nav style={navBar}>
         {([
-          ["train", "수련"], ["mountain", "약속의 산"], ["cards", "도감"], ["boss", "보스"],
-          ["friends", "동문"], ["record", "기록"], ["chars", "캐릭터"], ["lab", "설정"],
+          ["train", "수련"], ["mountain", "약속의 산"], ["boss", "보스"], ["cards", "도감"],
+          ["kata", "호흡법"], ["friends", "동문"], ["record", "기록"], ["lab", "설정"],
         ] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k} style={pill(tab === k)}>
             {label}
@@ -76,13 +77,24 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
       {tab === "friends" && <FriendsScreen data={data} />}
       {tab === "record" && <RecordScreen data={data} onConfess={game.confess} />}
       {tab === "boss" && <BossScreen data={data} />}
-      {tab === "chars" && <CharGallery />}
+      {tab === "kata" && <KataScreen data={data} />}
       {tab === "lab" && (
-        <div style={{ textAlign: "center", padding: "40px 20px" }}>
-          <p style={{ color: "var(--ink-2)", fontSize: 14, marginBottom: 16 }}>
-            아직 만드는 중인 화면들이 여기 모여요.
-          </p>
-          <button onClick={game.logout} style={{ ...pill(false), padding: "10px 20px" }}>로그아웃</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "24px 8px", maxWidth: 380, margin: "0 auto" }}>
+          <div style={{ textAlign: "center" }}>
+            <span style={{ width: 84, display: "inline-block" }}>
+              <Char charKey={(data.user.character || "panda") as CharKey} grade={gradeOf(total)} anim noGround />
+            </span>
+            <div style={{ fontSize: 16, fontWeight: 800, marginTop: 6 }}>{data.user.nickname}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
+              {CHAR_LIST.find((c) => c.key === data.user.character)?.name ?? ""} · 수련 {total}일
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--ink-3)", textAlign: "center", lineHeight: 1.7 }}>
+            {hasServer()
+              ? "친구와 함께 쓰는 중이에요 (서버 연결됨)."
+              : "지금은 이 기기에만 저장돼요. 항상 같은 기기·브라우저로 들어와 주세요."}
+          </div>
+          <button onClick={game.logout} style={{ ...pill(false), padding: "12px 20px" }}>로그아웃</button>
         </div>
       )}
     </div>
@@ -107,36 +119,6 @@ function Splash() {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", gap: 12 }}>
       <span style={{ width: 90 }}><Char charKey="panda" grade={2} anim noGround /></span>
       <span style={{ color: "var(--ink-2)", fontSize: 13 }}>불러오는 중…</span>
-    </div>
-  );
-}
-
-/* ---- 캐릭터 도감 (기존 부품 확인용) ---- */
-function CharGallery() {
-  const [key, setKey] = useState<CharKey>("panda");
-  const [grade, setGrade] = useState(2);
-  const cur = CHAR_LIST.find((c) => c.key === key)!;
-  return (
-    <div>
-      <section style={{ background: "var(--surface)", border: "1px solid var(--edge)", borderRadius: "var(--r-lg)", padding: 20, display: "grid", gridTemplateColumns: "minmax(0,1fr) 200px", gap: 20, alignItems: "center", marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "center" }}><Char charKey={key} grade={grade} size={220} anim /></div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 800 }}>{cur.name}</div>
-            <div style={{ fontSize: 12, color: "var(--kin)", fontWeight: 700 }}>{GRADES[grade].name} · {GRADES[grade].need}일</div>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {CHAR_LIST.map((c) => (
-              <button key={c.key} onClick={() => setKey(c.key)} aria-pressed={c.key === key} style={pill(c.key === key)}>{c.short}</button>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {GRADES.map((g) => (
-              <button key={g.idx} onClick={() => setGrade(g.idx)} aria-pressed={g.idx === grade} style={pill(g.idx === grade)}>{g.name}</button>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
