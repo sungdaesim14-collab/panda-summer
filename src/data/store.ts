@@ -135,10 +135,31 @@ let _store: Store | null = null;
 
 export function getStore(): Store {
   if (_store) return _store;
-  // Supabase 연결은 자격증명이 준비되면 여기서 켠다.
-  // (SupabaseStore는 supabaseStore.ts에 있고, env가 있을 때만 동적 로딩)
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (url && key) {
+    // 서버 자격증명이 있으면 Supabase. 실패하면 아래 로컬로 폴백.
+    try {
+      // 정적 import를 피하려고 require 대신 동기 팩토리 사용
+      // (번들러가 supabaseStore를 포함하지만, env 없으면 인스턴스는 안 만든다)
+      _store = makeSupabaseStore(url, key);
+      return _store;
+    } catch {
+      // 폴백
+    }
+  }
   _store = new LocalStore();
   return _store;
+}
+
+/** supabaseStore를 지연 생성 (순환 import 방지용 주입점) */
+let _supabaseFactory: ((url: string, key: string) => Store) | null = null;
+export function registerSupabaseFactory(f: (url: string, key: string) => Store) {
+  _supabaseFactory = f;
+}
+function makeSupabaseStore(url: string, key: string): Store {
+  if (!_supabaseFactory) throw new Error("supabase factory not registered");
+  return _supabaseFactory(url, key);
 }
 
 export function hasServer(): boolean {
