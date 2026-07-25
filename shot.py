@@ -1,4 +1,4 @@
-"""기록·친구 화면 검증. 여러 명의 저장 데이터를 주입해 친구 목록을 만든다."""
+"""실제 데이터로 도감·보스 화면 검증."""
 import pathlib, time, sys
 from playwright.sync_api import sync_playwright
 
@@ -6,18 +6,25 @@ OUT = pathlib.Path(__file__).resolve().parent / "shots"
 OUT.mkdir(exist_ok=True)
 URL = "http://localhost:5180/"
 
-def log(d, done=True, stars=3, win="win", obst="유튜브 보고 싶어져", praise="", note=""):
+def log(d, win="win", stars=3, obst="유튜브 보고 싶어져"):
     return {"date": d, "missions": ["책 30분 읽기", "명상 1분 하기"],
-            "done": ["책 30분 읽기", "명상 1분 하기"] if done else [],
-            "completed": done, "stars": stars, "outcome": "", "obstacle": obst,
-            "plan": "", "win": win, "selfPraise": praise, "note": note,
+            "done": ["책 30분 읽기", "명상 1분 하기"], "completed": True,
+            "stars": stars, "outcome": "", "obstacle": obst, "plan": "",
+            "win": win, "selfPraise": "오늘도 해낸 나", "note": "",
             "pledged": True, "confessed": False, "savedAt": "2026-07-25T00:00:00Z"}
 
-def save(nick, char, logs):
+def save(days):
+    logs = []
+    for i in range(days):
+        day = 25 + i
+        d = f"2026-07-{day:02d}" if day <= 31 else f"2026-08-{day-31:02d}"
+        logs.append(log(d, win="win" if i % 2 == 0 else "none", stars=5 if i % 3 == 0 else 3))
     return {"version": 1,
-            "user": {"nickname": nick, "pinHash": "x", "character": char,
-                     "joinDate": "2026-07-25", "honestyGiven": False},
-            "logs": logs, "cards": [], "bosses": []}
+            "user": {"nickname": "별이", "pinHash": "x", "character": "fox",
+                     "joinDate": "2026-07-25", "honestyGiven": True},
+            "logs": logs,
+            "cards": [{"key": "honest", "kind": "special", "gotDate": "2026-08-01", "pos": -1}],
+            "bosses": []}
 
 errors = []
 with sync_playwright() as p:
@@ -28,42 +35,23 @@ with sync_playwright() as p:
     pg.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
     pg.goto(URL, timeout=20000); time.sleep(1.0)
 
-    me = save("별이", "fox", [
-        log("2026-07-25", stars=4, praise="첫날부터 해냈다"),
-        log("2026-07-26", stars=3, win="none", note="생각보다 재밌었다"),
-        log("2026-07-27", stars=5, praise="진짜 하기 싫었는데 해냈다"),
-    ])
-    friends = {
-        "별이": me["user"],
-        "하늘이": save("하늘이", "tiger", [log("2026-07-25"), log("2026-07-26")])["user"],
-        "달콩이": save("달콩이", "rabbit", [log("2026-07-25"), log("2026-07-26"), log("2026-07-27")])["user"],
-    }
-    pg.evaluate("""(d) => {
+    # 10일차로 주입 (7/25~8/3)
+    s = save(10)
+    pg.evaluate("""(s) => {
       localStorage.clear();
       localStorage.setItem('panda.token', '별이');
-      localStorage.setItem('panda.users', JSON.stringify(d.friends));
-      localStorage.setItem('panda.save.별이', JSON.stringify(d.me));
-      localStorage.setItem('panda.save.하늘이', JSON.stringify(d.h));
-      localStorage.setItem('panda.save.달콩이', JSON.stringify(d.dal));
-    }""", {"friends": friends, "me": me,
-            "h": save("하늘이", "tiger", [log("2026-07-25"), log("2026-07-26")]),
-            "dal": save("달콩이", "rabbit", [log("2026-07-25"), log("2026-07-26"), log("2026-07-27")])})
+      localStorage.setItem('panda.users', JSON.stringify({'별이': s.user}));
+      localStorage.setItem('panda.save.별이', JSON.stringify(s));
+    }""", s)
     pg.reload(); time.sleep(1.4)
 
-    pg.get_by_role("button", name="기록").click(); time.sleep(0.9)
-    pg.screenshot(path=str(OUT / "record.png"), full_page=True)
-    print("기록 화면 OK")
+    pg.get_by_role("button", name="도감").click(); time.sleep(1.0)
+    pg.screenshot(path=str(OUT / "real_dex.png"), full_page=True)
+    print("도감(실데이터) OK")
 
-    # 고백 흐름
-    pg.get_by_role("button", name="🙏 솔직하게 고백하기").first.click(); time.sleep(0.5)
-    pg.screenshot(path=str(OUT / "record_confess.png"), full_page=True)
-    pg.get_by_role("button", name="응, 솔직하게 말할래").click(); time.sleep(1.0)
-    pg.screenshot(path=str(OUT / "record_gem.png"), full_page=True)
-    print("고백 → 정직의 보석 OK")
-
-    pg.get_by_role("button", name="동문").click(); time.sleep(0.9)
-    pg.screenshot(path=str(OUT / "friends.png"), full_page=True)
-    print("동문 화면 OK")
+    pg.get_by_role("button", name="보스", exact=True).click(); time.sleep(1.0)
+    pg.screenshot(path=str(OUT / "real_boss.png"), full_page=True)
+    print("보스(실데이터) OK")
 
     ov = pg.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1")
     print(f"가로스크롤 = {ov}")

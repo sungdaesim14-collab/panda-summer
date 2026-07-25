@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Char } from "./components/Char";
 import { CHAR_LIST, GRADES, type CharKey } from "./art/chars";
-import { BossPreview } from "./screens/BossPreview";
-import { CardPreview } from "./screens/CardPreview";
+import { BossScreen } from "./screens/BossScreen";
+import { DexScreen } from "./screens/DexScreen";
 import { TrainScreen } from "./screens/TrainScreen";
 import { MountainScreen } from "./screens/MountainScreen";
 import { RecordScreen } from "./screens/RecordScreen";
@@ -72,10 +72,10 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
 
       {tab === "train" && <TrainScreen data={data} onSaveLog={game.saveLog} />}
       {tab === "mountain" && <MountainScreen data={data} />}
-      {tab === "cards" && <CardPreview />}
+      {tab === "cards" && <DexScreen data={data} />}
       {tab === "friends" && <FriendsScreen data={data} />}
       {tab === "record" && <RecordScreen data={data} onConfess={game.confess} />}
-      {tab === "boss" && <BossPreview />}
+      {tab === "boss" && <BossScreen data={data} />}
       {tab === "chars" && <CharGallery />}
       {tab === "lab" && (
         <div style={{ textAlign: "center", padding: "40px 20px" }}>
