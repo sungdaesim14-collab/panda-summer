@@ -30,17 +30,23 @@ export interface SudokuSpec {
 }
 
 /**
- * 몇 번째 스도쿠인가(1~)에 따른 난이도.
- * 항상 9x9. 빈칸 수만 서서히 늘려 난이도를 올린다.
- *   시작 34칸 → 회차마다 +1 → 상한 58칸(꽤 어려움).
- * (스도쿠는 보통 빈칸 46~54면 어려움, 55+는 고난도)
+ * 몇 번째 스도쿠인가(1~)와 캐릭터에 따른 난이도. 항상 9x9.
+ *
+ *  - 토끼(easy=true): 1학년도 쓸 수 있게 완만. 40칸 시작 → 상한 52칸.
+ *  - 나머지(easy=false): '포기하지 않는 힘'을 기르도록 처음부터 도전적.
+ *    48칸(어려움) 시작 → 회차마다 늘어 → 상한 60칸(고난도).
+ *
+ * (참고: 빈칸 46~50=어려움, 51~55=매우 어려움, 56+=고난도)
  */
-export function specForDay(day: number): SudokuSpec {
-  const blanks = Math.min(58, 34 + Math.max(0, day - 1));
+export function specForDay(day: number, easy = false): SudokuSpec {
+  const d = Math.max(0, day - 1);
+  const blanks = easy
+    ? Math.min(52, 40 + d)
+    : Math.min(56, 48 + d);
   const level =
-    blanks <= 40 ? "죽순길" :
-    blanks <= 48 ? "안개 계곡" :
-    blanks <= 54 ? "바람 능선" : "눈꽃 정상";
+    blanks <= 44 ? "새잎길" :
+    blanks <= 50 ? "안개 계곡" :
+    blanks <= 55 ? "바람 능선" : "눈꽃 정상";
   return { size: 9, boxRows: 3, boxCols: 3, blanks, level };
 }
 
@@ -99,9 +105,9 @@ function seedFrom(dateISO: string, salt: number): number {
   return h >>> 0;
 }
 
-/** 그날의 퍼즐을 만든다 (날짜로 고정) */
-export function makePuzzle(dateISO: string, day: number): Puzzle {
-  const spec = specForDay(day);
+/** 그날의 퍼즐을 만든다 (날짜로 고정). easy는 토끼(1학년용) 여부 */
+export function makePuzzle(dateISO: string, day: number, easy = false): Puzzle {
+  const spec = specForDay(day, easy);
   const rnd = mulberry32(seedFrom(dateISO, spec.size * 1000 + spec.blanks));
   const solution = fullGrid(spec, rnd);
 

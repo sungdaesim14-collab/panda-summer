@@ -24,14 +24,16 @@ function load(): Store {
 }
 function save(s: Store) { localStorage.setItem(K, JSON.stringify(s)); }
 
-export function SudokuScreen({ onSolved }: Props) {
+export function SudokuScreen({ data, onSolved }: Props) {
   const today = todayISO();
   const store = useMemo(load, []);
   const solvedToday = store.done.includes(today);
 
+  // 토끼는 1학년도 쓸 수 있게 완만한 난이도, 나머지는 도전적
+  const easy = data.user.character === "rabbit";
   // 몇 번째 스도쿠인가 = 지금까지 완성한 수 + 1 (풀수록 난이도 상승)
-  const day = Math.min(32, store.done.length + 1);
-  const puzzle: Puzzle = useMemo(() => makePuzzle(today, day), [today, day]);
+  const day = store.done.length + 1;
+  const puzzle: Puzzle = useMemo(() => makePuzzle(today, day, easy), [today, day, easy]);
 
   const [grid, setGrid] = useState<Grid>(() => {
     if (store.progress?.date === today) return store.progress.grid.map((r) => r.slice());
