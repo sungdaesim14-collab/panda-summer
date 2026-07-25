@@ -5,6 +5,8 @@ import { BossPreview } from "./screens/BossPreview";
 import { CardPreview } from "./screens/CardPreview";
 import { TrainScreen } from "./screens/TrainScreen";
 import { MountainScreen } from "./screens/MountainScreen";
+import { RecordScreen } from "./screens/RecordScreen";
+import { FriendsScreen } from "./screens/FriendsScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CharSelectScreen } from "./screens/CharSelectScreen";
 import { useGame, totalDaysOf, streakDaysOf } from "./data/useGame";
@@ -29,7 +31,7 @@ export function App() {
 }
 
 function Home({ game }: { game: ReturnType<typeof useGame> }) {
-  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "boss" | "chars" | "lab">("train");
+  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "friends" | "record" | "boss" | "chars" | "lab">("train");
   const data = game.auth.phase === "ready" ? game.auth.data : null;
   if (!data) return null;
 
@@ -60,7 +62,7 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
       <nav style={navBar}>
         {([
           ["train", "수련"], ["mountain", "약속의 산"], ["cards", "도감"], ["boss", "보스"],
-          ["chars", "캐릭터"], ["lab", "실험실"],
+          ["friends", "동문"], ["record", "기록"], ["chars", "캐릭터"], ["lab", "설정"],
         ] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k} style={pill(tab === k)}>
             {label}
@@ -71,6 +73,8 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
       {tab === "train" && <TrainScreen data={data} onSaveLog={game.saveLog} />}
       {tab === "mountain" && <MountainScreen data={data} />}
       {tab === "cards" && <CardPreview />}
+      {tab === "friends" && <FriendsScreen data={data} />}
+      {tab === "record" && <RecordScreen data={data} onConfess={game.confess} />}
       {tab === "boss" && <BossPreview />}
       {tab === "chars" && <CharGallery />}
       {tab === "lab" && (

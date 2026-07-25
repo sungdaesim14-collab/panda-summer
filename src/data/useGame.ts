@@ -78,7 +78,34 @@ export function useGame() {
     if (fresh) setAuth({ phase: "ready", data: fresh });
   }, [auth, store]);
 
-  return { auth, register, login, chooseCharacter, logout, saveLog };
+  /**
+   * 솔직하게 고백하기.
+   * 사실 안 했다고 고백하면 그 날의 completed를 false로 되돌리고,
+   * 처음 한 번은 '정직의 보석'을 준다.
+   * 반환: 정직의 보석을 이번에 새로 얻었는지.
+   */
+  const confess = useCallback(async (date: string): Promise<{ gotGem: boolean }> => {
+    if (auth.phase !== "ready") return { gotGem: false };
+    const data = structuredCloneSafe(auth.data);
+    const log = data.logs.find((l) => l.date === date);
+    if (!log || log.confessed) return { gotGem: false };
+
+    log.confessed = true;
+    log.completed = false;          // 정직: 안 한 날은 안 한 것으로
+    log.savedAt = new Date().toISOString();
+
+    let gotGem = false;
+    if (!data.user.honestyGiven) {
+      data.user.honestyGiven = true;
+      data.cards.push({ key: "honest", kind: "special", gotDate: todayISO(), pos: -1 });
+      gotGem = true;
+    }
+    await store.save(data);
+    setAuth({ phase: "ready", data });
+    return { gotGem };
+  }, [auth, store]);
+
+  return { auth, register, login, chooseCharacter, logout, saveLog, confess };
 }
 
 /* 파생 값 도우미 */
@@ -95,4 +122,11 @@ export function todayLogOf(data: SaveData): DayLog | undefined {
 export function todayISO(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** structuredClone이 없는 환경 대비 */
+function structuredCloneSafe<T>(v: T): T {
+  return typeof structuredClone === "function"
+    ? structuredClone(v)
+    : JSON.parse(JSON.stringify(v));
 }
