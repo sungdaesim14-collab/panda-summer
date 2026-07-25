@@ -31,22 +31,21 @@ export interface SudokuSpec {
 
 /**
  * 몇 번째 스도쿠인가(1~)와 캐릭터에 따른 난이도. 항상 9x9.
+ * blanks는 '목표 빈칸 수'다. 실제로는 유일해가 유지되는 선까지만 빼므로,
+ * 논리로 풀리는(추측 필요 없는) 퍼즐이 나온다.
  *
- *  - 토끼(easy=true): 1학년도 쓸 수 있게 완만. 40칸 시작 → 상한 52칸.
- *  - 나머지(easy=false): '포기하지 않는 힘'을 기르도록 처음부터 도전적.
- *    48칸(어려움) 시작 → 회차마다 늘어 → 상한 60칸(고난도).
- *
- * (참고: 빈칸 46~50=어려움, 51~55=매우 어려움, 56+=고난도)
+ *  - 토끼(easy=true): 1학년용. 34칸 시작 → 상한 44칸.
+ *  - 나머지(easy=false): 조금 도전적. 38칸 시작 → 상한 50칸.
  */
 export function specForDay(day: number, easy = false): SudokuSpec {
   const d = Math.max(0, day - 1);
   const blanks = easy
-    ? Math.min(52, 40 + d)
-    : Math.min(56, 48 + d);
+    ? Math.min(44, 34 + d)
+    : Math.min(50, 38 + d);
   const level =
-    blanks <= 44 ? "새잎길" :
-    blanks <= 50 ? "안개 계곡" :
-    blanks <= 55 ? "바람 능선" : "눈꽃 정상";
+    blanks <= 38 ? "새잎길" :
+    blanks <= 44 ? "안개 계곡" :
+    blanks <= 48 ? "바람 능선" : "눈꽃 정상";
   return { size: 9, boxRows: 3, boxCols: 3, blanks, level };
 }
 
@@ -105,20 +104,58 @@ function seedFrom(dateISO: string, salt: number): number {
   return h >>> 0;
 }
 
-/** 그날의 퍼즐을 만든다 (날짜로 고정). easy는 토끼(1학년용) 여부 */
+/** (r,c)에 v를 놓아도 되나 (행·열·박스 규칙) */
+function canPlace(g: Grid, spec: SudokuSpec, r: number, c: number, v: number): boolean {
+  const n = spec.size;
+  for (let i = 0; i < n; i++) {
+    if (g[r][i] === v) return false;
+    if (g[i][c] === v) return false;
+  }
+  const br = Math.floor(r / spec.boxRows) * spec.boxRows;
+  const bc = Math.floor(c / spec.boxCols) * spec.boxCols;
+  for (let i = br; i < br + spec.boxRows; i++)
+    for (let j = bc; j < bc + spec.boxCols; j++)
+      if (g[i][j] === v) return false;
+  return true;
+}
+
+/** 해가 몇 개인지 센다 (limit개에서 멈춤). 유일해 판정용 */
+function countSolutions(g: Grid, spec: SudokuSpec, limit: number): number {
+  const n = spec.size;
+  // 첫 빈칸 찾기
+  let er = -1, ec = -1;
+  outer: for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (g[r][c] === 0) { er = r; ec = c; break outer; }
+  if (er === -1) return 1; // 빈칸 없음 = 완성된 해 하나
+
+  let count = 0;
+  for (let v = 1; v <= n; v++) {
+    if (canPlace(g, spec, er, ec, v)) {
+      g[er][ec] = v;
+      count += countSolutions(g, spec, limit - count);
+      g[er][ec] = 0;
+      if (count >= limit) break;
+    }
+  }
+  return count;
+}
+
+/**
+ * 그날의 퍼즐 (날짜로 고정). easy는 토끼(1학년용) 여부.
+ * 유일해가 유지되는 선까지만 칸을 빼서, 추측 없이 논리로 풀리는 퍼즐을 만든다.
+ */
 export function makePuzzle(dateISO: string, day: number, easy = false): Puzzle {
   const spec = specForDay(day, easy);
   const rnd = mulberry32(seedFrom(dateISO, spec.size * 1000 + spec.blanks));
   const solution = fullGrid(spec, rnd);
 
-  // 빈칸 뚫기 — 대칭으로 (보기 좋게)
   const { size } = spec;
   const puzzle = solution.map((r) => r.slice());
-  const given = solution.map((r) => r.map(() => true));
 
-  const cells = size * size;
+  // 셀을 랜덤 순서로 하나씩 빼되, 유일해가 깨지면 되돌린다
   const order: number[] = [];
-  for (let i = 0; i < cells; i++) order.push(i);
+  for (let i = 0; i < size * size; i++) order.push(i);
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
@@ -129,16 +166,17 @@ export function makePuzzle(dateISO: string, day: number, easy = false): Puzzle {
     if (removed >= spec.blanks) break;
     const r = Math.floor(idx / size), c = idx % size;
     if (puzzle[r][c] === 0) continue;
-    puzzle[r][c] = 0; given[r][c] = false;
-    removed++;
-    // 대칭 칸도 (가운데가 아니면)
-    const sr = size - 1 - r, sc = size - 1 - c;
-    if ((sr !== r || sc !== c) && removed < spec.blanks && puzzle[sr][sc] !== 0) {
-      puzzle[sr][sc] = 0; given[sr][sc] = false;
+    const saved = puzzle[r][c];
+    puzzle[r][c] = 0;
+    // 유일해가 아니면 되돌린다 (복사본으로 검사)
+    if (countSolutions(puzzle.map((row) => row.slice()), spec, 2) !== 1) {
+      puzzle[r][c] = saved;
+    } else {
       removed++;
     }
   }
 
+  const given = puzzle.map((row) => row.map((v) => v !== 0));
   return { spec, puzzle, solution, given };
 }
 
