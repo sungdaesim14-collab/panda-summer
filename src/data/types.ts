@@ -48,9 +48,9 @@ export interface DayLog {
 export interface OwnedCard {
   /** 32일 카드면 treasure key, 특별/보스/호흡법이면 각자의 key */
   key: string;
-  kind: "treasure" | "special" | "boss" | "kata" | "char";
+  kind: "treasure" | "special" | "boss" | "kata" | "char" | "cave";
   gotDate: string;
-  /** 숲에 배치된 자리(-1이면 보관함) */
+  /** 숲/동굴에 배치된 자리(-1이면 보관함) */
   pos: number;
 }
 

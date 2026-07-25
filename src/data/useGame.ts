@@ -105,7 +105,33 @@ export function useGame() {
     return { gotGem };
   }, [auth, store]);
 
-  return { auth, register, login, chooseCharacter, logout, saveLog, confess };
+  /** 동굴 보물 획득 (스도쿠 완성 보상). 이미 있으면 무시 */
+  const awardCaveItem = useCallback(async (key: string) => {
+    if (auth.phase !== "ready") return;
+    const data = structuredCloneSafe(auth.data);
+    if (data.cards.some((c) => c.kind === "cave" && c.key === key)) return;
+    data.cards.push({ key, kind: "cave", gotDate: todayISO(), pos: -1 });
+    await store.save(data);
+    setAuth({ phase: "ready", data });
+  }, [auth, store]);
+
+  /** 동굴 아이템을 특정 자리에 놓거나 보관함으로 (pos: -1) */
+  const setCavePos = useCallback(async (key: string, pos: number) => {
+    if (auth.phase !== "ready") return;
+    const data = structuredCloneSafe(auth.data);
+    // 그 자리에 이미 다른 게 있으면 서로 자리를 비켜준다
+    if (pos >= 0) {
+      for (const c of data.cards) {
+        if (c.kind === "cave" && c.pos === pos && c.key !== key) c.pos = -1;
+      }
+    }
+    const target = data.cards.find((c) => c.kind === "cave" && c.key === key);
+    if (target) target.pos = pos;
+    await store.save(data);
+    setAuth({ phase: "ready", data });
+  }, [auth, store]);
+
+  return { auth, register, login, chooseCharacter, logout, saveLog, confess, awardCaveItem, setCavePos };
 }
 
 /* 파생 값 도우미 */

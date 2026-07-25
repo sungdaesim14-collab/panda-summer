@@ -4,12 +4,14 @@ import { makePuzzle, isSolved, isConflict, type Grid, type Puzzle } from "../gam
 // isSolved는 이제 정답 그리드가 아니라 규칙(spec)으로 판정한다
 import { todayISO } from "../data/useGame";
 import { fx } from "../game/feedback";
+import { rollCaveItem, caveItem, RARITY_META, myCaveItems, CAVE_TOTAL, type CaveItem } from "../game/cave";
+import { drawCaveItem } from "../art/drawCave";
 import type { SaveData } from "../data/types";
 
 interface Props {
   data: SaveData;
-  /** 완성했을 때 (다음 단계에서 동굴 아이템 지급에 쓴다) */
-  onSolved?: (day: number) => void;
+  /** 동굴 보물 획득 시 저장 */
+  onAward: (key: string) => Promise<void>;
 }
 
 const K = "panda.sudoku.v1";
@@ -24,7 +26,7 @@ function load(): Store {
 }
 function save(s: Store) { localStorage.setItem(K, JSON.stringify(s)); }
 
-export function SudokuScreen({ data, onSolved }: Props) {
+export function SudokuScreen({ data, onAward }: Props) {
   const today = todayISO();
   const store = useMemo(load, []);
   const solvedToday = store.done.includes(today);
@@ -41,6 +43,7 @@ export function SudokuScreen({ data, onSolved }: Props) {
   });
   const [sel, setSel] = useState<[number, number] | null>(null);
   const [justSolved, setJustSolved] = useState(false);
+  const [wonItem, setWonItem] = useState<CaveItem | null | "none">(null); // null=미정, "none"=다모음
 
   const n = puzzle.spec.size;
 
@@ -83,8 +86,17 @@ export function SudokuScreen({ data, onSolved }: Props) {
       s.progress = undefined;
       save(s);
       setJustSolved(true);
-      fx.legend();
-      onSolved?.(day);
+
+      // 동굴 보물 뽑기 (중복 없이, 등급 가중)
+      const owned = new Set(myCaveItems(data.cards).map((c) => c.key));
+      const won = rollCaveItem(owned);
+      setWonItem(won ?? "none");
+      if (won) {
+        fx.legend();
+        onAward(won.key);
+      } else {
+        fx.complete();
+      }
     }
   };
 
@@ -111,12 +123,18 @@ export function SudokuScreen({ data, onSolved }: Props) {
 
       {solved ? (
         <div style={{ ...panel, textAlign: "center", borderColor: "var(--kin)" }}>
-          <div style={{ fontSize: 34 }}>🎉</div>
-          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 4 }}>다 풀었다!</div>
-          <p style={{ fontSize: 13, color: "var(--ink-2)", margin: "6px 0 0", lineHeight: 1.6 }}>
-            끝까지 집중해 해냈구나. 이 끈기가 진짜 수련이다.<br />
-            <span style={{ color: "var(--kin)", fontWeight: 700 }}>동굴을 꾸밀 보물</span>은 곧 여기서 받게 된단다.
+          <div style={{ fontSize: 30 }}>🎉</div>
+          <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2 }}>다 풀었다!</div>
+          <p style={{ fontSize: 12.5, color: "var(--ink-2)", margin: "5px 0 14px", lineHeight: 1.6 }}>
+            끝까지 집중해 해냈구나. 이 끈기가 진짜 수련이다.
           </p>
+
+          {wonItem && wonItem !== "none" && <WonTreasure item={wonItem} />}
+          {wonItem === "none" && (
+            <div style={{ fontSize: 13, color: "var(--kin)", fontWeight: 700, padding: "12px 0" }}>
+              동굴의 보물 {CAVE_TOTAL}종을 모두 모았구나. 대단하다!
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -186,6 +204,31 @@ function SudokuGrid({
           );
         })
       )}
+    </div>
+  );
+}
+
+function WonTreasure({ item }: { item: CaveItem }) {
+  const meta = RARITY_META[item.rarity];
+  const info = caveItem(item.key)!;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ fontSize: 10.5, letterSpacing: ".2em", color: meta.edge, fontWeight: 800 }}>
+        동굴의 보물을 얻었다
+      </div>
+      <div style={{
+        width: 120, aspectRatio: "3/4", borderRadius: 12, position: "relative",
+        border: `2px solid ${meta.edge}`, background: "var(--ground-2)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        boxShadow: meta.glow ? `0 0 22px -4px ${meta.edge}` : "none",
+      }}>
+        <span style={{ position: "absolute", top: 7, left: 0, right: 0, fontSize: 9, letterSpacing: ".28em", color: meta.edge, fontWeight: 800, textAlign: "center" }}>
+          {meta.label}
+        </span>
+        <span style={{ width: "62%", lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: drawCaveItem(item.key) }} />
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 800 }}>{info.name}</div>
+      <div style={{ fontSize: 11.5, color: "var(--ink-2)" }}>동굴 탭에서 꾸며보자</div>
     </div>
   );
 }

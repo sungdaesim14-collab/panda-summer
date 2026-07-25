@@ -9,6 +9,7 @@ import { RecordScreen } from "./screens/RecordScreen";
 import { FriendsScreen } from "./screens/FriendsScreen";
 import { KataScreen } from "./screens/KataScreen";
 import { SudokuScreen } from "./screens/SudokuScreen";
+import { CaveScreen } from "./screens/CaveScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CharSelectScreen } from "./screens/CharSelectScreen";
 import { useGame, totalDaysOf, streakDaysOf } from "./data/useGame";
@@ -33,7 +34,7 @@ export function App() {
 }
 
 function Home({ game }: { game: ReturnType<typeof useGame> }) {
-  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "kata" | "sudoku" | "friends" | "record" | "boss" | "lab">("train");
+  const [tab, setTab] = useState<"train" | "mountain" | "cards" | "kata" | "sudoku" | "cave" | "friends" | "record" | "boss" | "lab">("train");
   const data = game.auth.phase === "ready" ? game.auth.data : null;
   if (!data) return null;
 
@@ -64,7 +65,7 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
       <nav style={navBar}>
         {([
           ["train", "수련"], ["mountain", "약속의 산"], ["boss", "보스"], ["cards", "도감"],
-          ["kata", "호흡법"], ["sudoku", "두뇌 수련"], ["friends", "동문"], ["record", "기록"], ["lab", "설정"],
+          ["kata", "호흡법"], ["sudoku", "두뇌 수련"], ["cave", "동굴"], ["friends", "동문"], ["record", "기록"], ["lab", "설정"],
         ] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} aria-pressed={tab === k} style={pill(tab === k)}>
             {label}
@@ -79,7 +80,8 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
       {tab === "record" && <RecordScreen data={data} onConfess={game.confess} />}
       {tab === "boss" && <BossScreen data={data} />}
       {tab === "kata" && <KataScreen data={data} />}
-      {tab === "sudoku" && <SudokuScreen data={data} />}
+      {tab === "sudoku" && <SudokuScreen data={data} onAward={game.awardCaveItem} />}
+      {tab === "cave" && <CaveScreen data={data} setCavePos={game.setCavePos} />}
       {tab === "lab" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: "24px 8px", maxWidth: 380, margin: "0 auto" }}>
           <div style={{ textAlign: "center" }}>
