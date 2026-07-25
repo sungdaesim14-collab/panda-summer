@@ -10,6 +10,7 @@ import { FriendsScreen } from "./screens/FriendsScreen";
 import { KataScreen } from "./screens/KataScreen";
 import { SudokuScreen } from "./screens/SudokuScreen";
 import { CaveScreen } from "./screens/CaveScreen";
+import { Onboarding } from "./screens/Onboarding";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CharSelectScreen } from "./screens/CharSelectScreen";
 import { useGame, totalDaysOf, streakDaysOf } from "./data/useGame";
@@ -35,14 +36,23 @@ export function App() {
 
 function Home({ game }: { game: ReturnType<typeof useGame> }) {
   const [tab, setTab] = useState<"train" | "mountain" | "cards" | "kata" | "sudoku" | "cave" | "friends" | "record" | "boss" | "lab">("train");
+  const [onboarded, setOnboarded] = useState(() => {
+    try { return localStorage.getItem("panda.onboarded") === "1"; } catch { return true; }
+  });
   const data = game.auth.phase === "ready" ? game.auth.data : null;
   if (!data) return null;
+
+  const finishOnboarding = () => {
+    try { localStorage.setItem("panda.onboarded", "1"); } catch { /* 무시 */ }
+    setOnboarded(true);
+  };
 
   const total = totalDaysOf(data);
   const streak = streakDaysOf(data);
 
   return (
     <div style={{ maxWidth: 620, margin: "0 auto", padding: "16px 14px 40px" }}>
+      {!onboarded && <Onboarding nickname={data.user.nickname} onDone={finishOnboarding} />}
       <header style={headerBar}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: ".3em", color: "var(--kin)" }}>竹 の 剣 士</div>
