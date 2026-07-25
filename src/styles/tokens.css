@@ -1,0 +1,77 @@
+/* =========================================================
+   디자인 토큰 — 밤의 대숲
+   색은 여기서만 정한다. 화면 코드에서 직접 색을 쓰지 말 것.
+   ========================================================= */
+:root {
+  /* 바탕 */
+  --ground:   #12160F;
+  --ground-2: #1A2016;
+  --surface:  #212a1d;
+  --edge:     #33402C;
+
+  /* 글자 */
+  --ink:      #ECE7D6;
+  --ink-2:    #9AA890;   /* 초록 기운을 띤 중성색 — 회색을 그냥 쓰지 않는다 */
+  --ink-3:    #6C7A64;
+
+  /* 강조 */
+  --kin:      #E0AC48;   /* 금 — 보상과 진행 */
+  --kin-hi:   #F5CE73;
+  --on-kin:   #171B10;
+  --bamboo:   #5FB37C;   /* 대나무 — 완료와 긍정 */
+  --shu:      #D4604A;   /* 인주 — 아주 아껴서 */
+
+  /* 형태 */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-pill: 999px;
+
+  /* 간격 (4의 배수) */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px;
+
+  --shadow: 0 12px 28px -18px rgba(0, 0, 0, 0.75);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+button { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--kin); outline-offset: 2px; }
+
+/* 캐릭터 애니메이션 — drawChar.ts가 이 이름을 참조한다 */
+@keyframes pcBreathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-2.5px) scale(1.014); }
+}
+@keyframes pcBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.08); }
+}
+@keyframes pcTail {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(7deg); }
+}
+@keyframes bossFloat {
+  0%, 100% { transform: translateY(0) rotate(-1.5deg); }
+  50%      { transform: translateY(-7px) rotate(1.5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
