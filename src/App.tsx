@@ -11,6 +11,9 @@ import { KataScreen } from "./screens/KataScreen";
 import { SudokuScreen } from "./screens/SudokuScreen";
 import { CaveScreen } from "./screens/CaveScreen";
 import { Onboarding } from "./screens/Onboarding";
+import { Graduation } from "./screens/Graduation";
+import { SEASON } from "./game/season";
+import { todayISO } from "./data/useGame";
 import { LoginScreen } from "./screens/LoginScreen";
 import { CharSelectScreen } from "./screens/CharSelectScreen";
 import { useGame, totalDaysOf, streakDaysOf } from "./data/useGame";
@@ -50,9 +53,22 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
   const total = totalDaysOf(data);
   const streak = streakDaysOf(data);
 
+  // 졸업: 32일 완주 또는 방학 종료(8/25) 후. 확인용 ?grad=1
+  const forceGrad = (() => { try { return new URLSearchParams(location.search).get("grad") === "1"; } catch { return false; } })();
+  const graduable = forceGrad || total >= 32 || todayISO() >= SEASON.end;
+  const [showGrad, setShowGrad] = useState(() => {
+    if (forceGrad) return true;
+    try { return graduable && localStorage.getItem("panda.graduated") !== "1"; } catch { return false; }
+  });
+  const closeGrad = () => {
+    try { localStorage.setItem("panda.graduated", "1"); } catch { /* 무시 */ }
+    setShowGrad(false);
+  };
+
   return (
     <div style={{ maxWidth: 620, margin: "0 auto", padding: "16px 14px 40px" }}>
       {!onboarded && <Onboarding nickname={data.user.nickname} onDone={finishOnboarding} />}
+      {showGrad && <Graduation data={data} onClose={closeGrad} />}
       <header style={headerBar}>
         <div>
           <div style={{ fontSize: 10, letterSpacing: ".3em", color: "var(--kin)" }}>竹 の 剣 士</div>
@@ -108,6 +124,11 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
               ? "친구와 함께 쓰는 중이에요 (서버 연결됨)."
               : "지금은 이 기기에만 저장돼요. 항상 같은 기기·브라우저로 들어와 주세요."}
           </div>
+          {graduable && (
+            <button onClick={() => setShowGrad(true)} style={{ ...pill(false), padding: "12px 20px", borderColor: "var(--kin)", color: "var(--kin)" }}>
+              🎓 수료증 다시 보기
+            </button>
+          )}
           <button onClick={game.logout} style={{ ...pill(false), padding: "12px 20px" }}>로그아웃</button>
         </div>
       )}
