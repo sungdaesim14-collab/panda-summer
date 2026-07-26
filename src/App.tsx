@@ -99,7 +99,7 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
         ))}
       </nav>
 
-      {tab === "train" && <TrainScreen data={data} onSaveLog={game.saveLog} />}
+      {tab === "train" && <TrainScreen data={data} onSaveLog={game.saveLog} onAwardCave={game.awardCaveItem} />}
       {tab === "mountain" && <MountainScreen data={data} />}
       {tab === "cards" && <DexScreen data={data} />}
       {tab === "friends" && <FriendsScreen data={data} />}

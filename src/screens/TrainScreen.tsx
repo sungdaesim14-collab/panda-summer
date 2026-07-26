@@ -11,6 +11,9 @@ import {
   SABU, pickLine, daySeed, type WinKey,
 } from "../game/missions";
 import { fx } from "../game/feedback";
+import { goalForDate } from "../game/dailyGoal";
+import { rollCaveItem, caveItem, myCaveItems, RARITY_META, type CaveItem } from "../game/cave";
+import { drawCaveItem } from "../art/drawCave";
 
 /**
  * 매일의 흐름 — 계획과 결과를 정오(12시)로 나눈다.
@@ -36,13 +39,17 @@ type Phase = "pick" | "woop" | "wait" | "today" | "complete" | "reveal";
 interface Props {
   data: SaveData;
   onSaveLog: (log: DayLog) => Promise<void>;
+  /** 동굴 보물 획득 (황금 목표 보상) */
+  onAwardCave: (key: string) => Promise<void>;
 }
 
-export function TrainScreen({ data, onSaveLog }: Props) {
+export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
   const TODAY = todayISO();
   const seed = daySeed(TODAY);
   const existing = todayLogOf(data);
   const beforeNoon = currentHour() < NOON;
+  const goal = goalForDate(TODAY);
+  const [goalReward, setGoalReward] = useState<CaveItem | null>(null);
 
   const completedCount = totalDaysOf(data);
   const DAY_NO = Math.min(32, existing?.completed ? completedCount : completedCount + 1);
@@ -105,6 +112,7 @@ export function TrainScreen({ data, onSaveLog }: Props) {
     return (
       <Wrap>
         <NoonBadge beforeNoon />
+        <GoalBanner goal={goal} />
         <Sabu>{pickLine(SABU.pick, seed)}</Sabu>
         <Panel title="오늘의 수련 고르기">
           <p style={hint}>여러 개 골라도 되고, 하나만 골라도 된다.</p>
@@ -213,6 +221,7 @@ export function TrainScreen({ data, onSaveLog }: Props) {
     return (
       <Wrap>
         <NoonBadge beforeNoon={false} />
+        <GoalBanner goal={goal} />
         <Sabu>{pickLine(SABU.checking, seed)}</Sabu>
         <PlanCard woop={w} />
         <Panel title="해낸 만큼 체크">
@@ -284,6 +293,12 @@ export function TrainScreen({ data, onSaveLog }: Props) {
               savedAt: new Date().toISOString(),
             };
             await onSaveLog(log);
+            // 오늘의 황금 목표 판정 → 달성이면 동굴 보물 하나 (중복 없이)
+            if (goal.achieved(log)) {
+              const owned = new Set(myCaveItems(data.cards).map((x) => x.key));
+              const won = rollCaveItem(owned);
+              if (won) { await onAwardCave(won.key); setGoalReward(won); }
+            }
             setSaving(false);
             fx.complete();
             setPhase("reveal");
@@ -321,7 +336,42 @@ export function TrainScreen({ data, onSaveLog }: Props) {
           art={<span style={{ display: "block", lineHeight: 0 }} dangerouslySetInnerHTML={{ __html: drawItem(treasure.key) }} />} />
         <p style={{ ...hint, maxWidth: 260 }}>카드를 눌러 뒤집으면 <b style={{ color: "var(--ink)" }}>오늘 네가 남긴 기록</b>이 있다.</p>
       </div>
+
+      {goalReward && (
+        <div style={{ ...panelBase, textAlign: "center", borderColor: "var(--kin)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <div style={{ fontSize: 11, letterSpacing: ".16em", color: "var(--kin)", fontWeight: 800 }}>
+            🌟 오늘의 황금 목표 달성!
+          </div>
+          <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{goal.title}</div>
+          <div style={{
+            width: 84, aspectRatio: "1/1", padding: 10, borderRadius: 12, lineHeight: 0,
+            border: `2px solid ${RARITY_META[goalReward.rarity].edge}`, background: "var(--ground-2)",
+          }} dangerouslySetInnerHTML={{ __html: drawCaveItem(goalReward.key) }} />
+          <div style={{ fontSize: 13.5, fontWeight: 800 }}>
+            {caveItem(goalReward.key)?.name} <span style={{ fontSize: 11, color: "var(--ink-2)" }}>· 동굴 보물</span>
+          </div>
+        </div>
+      )}
     </Wrap>
+  );
+}
+
+function GoalBanner({ goal }: { goal: { title: string; hint: string } }) {
+  return (
+    <div style={{
+      display: "flex", gap: 11, alignItems: "flex-start",
+      padding: "12px 14px", borderRadius: "var(--r-md)",
+      border: "1px solid var(--kin)", background: "rgba(224,172,72,0.08)",
+    }}>
+      <span style={{ fontSize: 20, lineHeight: 1.2 }}>🌟</span>
+      <div>
+        <div style={{ fontSize: 10.5, letterSpacing: ".14em", color: "var(--kin)", fontWeight: 800 }}>오늘의 황금 목표</div>
+        <div style={{ fontSize: 14, fontWeight: 800, marginTop: 2 }}>{goal.title}</div>
+        <div style={{ fontSize: 12, color: "var(--ink-2)", marginTop: 2, lineHeight: 1.5 }}>
+          {goal.hint} <span style={{ color: "var(--kin)" }}>달성하면 동굴 보물 하나!</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
