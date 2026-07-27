@@ -20,6 +20,8 @@ export interface User {
   joinDate: string;
   /** 정직의 보석을 이미 받았는지 */
   honestyGiven: boolean;
+  /** 마지막 접속 시각(ISO) — 관리자가 확인 */
+  lastSeen?: string;
 }
 
 /** 하루치 수련 기록 */

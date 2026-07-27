@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Char } from "../components/Char";
+import { InstallButton } from "../components/InstallButton";
 import { isValidNickname, isValidPin } from "../data/pin";
 
 interface Props {
@@ -61,7 +62,11 @@ export function LoginScreen({ onLogin, onRegister }: Props) {
         처음 왔어요 · 새 수련생 등록
       </button>
 
-      <p style={{ marginTop: 22, fontSize: 11.5, color: "var(--ink-3)" }}>
+      <div style={{ marginTop: 16 }}>
+        <InstallButton />
+      </div>
+
+      <p style={{ marginTop: 16, fontSize: 11.5, color: "var(--ink-3)" }}>
         비밀번호는 이 기기에 안전하게 보관돼요 (평문으로 저장하지 않아요)
       </p>
     </div>
