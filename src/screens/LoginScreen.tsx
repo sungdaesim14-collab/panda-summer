@@ -14,7 +14,7 @@ export function LoginScreen({ onLogin, onRegister }: Props) {
   const [busy, setBusy] = useState(false);
 
   const go = async (mode: "login" | "register") => {
-    if (!isValidNickname(nick)) return setMsg("이름은 한글·영문·숫자로 2~10글자예요. (특수문자 X)");
+    if (!isValidNickname(nick)) return setMsg("이름은 2~12글자로 해주세요. (하트 ♡ 이모지도 돼요!)");
     if (!isValidPin(pin)) return setMsg("비밀번호는 숫자 4자리예요.");
     setBusy(true); setMsg("");
     const res = mode === "login" ? await onLogin(nick, pin) : await onRegister(nick, pin);

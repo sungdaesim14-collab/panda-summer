@@ -24,9 +24,20 @@ export function isValidPin(pin: string): boolean {
   return /^\d{4}$/.test(pin.trim());
 }
 
+/**
+ * 닉네임 규칙 — 아이들이 ♡ ★ 같은 특수기호나 이모지를 쓰고 싶어한다.
+ * 그래서 최대한 관대하게 둔다: 길이만 제한하고, 화면을 실제로 깨뜨리는
+ * '제어문자'만 막는다. 하트·별·이모지·따옴표 모두 허용(React·Supabase가 안전하게 처리).
+ */
 export function isValidNickname(nick: string): boolean {
   const t = nick.trim();
-  if (t.length < 2 || t.length > 10) return false;
-  // 한글·영문·숫자만 (따옴표 등 특수문자 금지 — DB·화면 깨짐 방지)
-  return /^[가-힣a-zA-Z0-9]+$/.test(t);
+  // 이모지·기호도 한 글자로 세도록 코드포인트 기준 길이
+  const len = [...t].length;
+  if (len < 2 || len > 12) return false;
+  // 보이지 않는 제어문자만 금지
+  for (const ch of t) {
+    const code = ch.codePointAt(0)!;
+    if (code < 0x20 || code === 0x7f) return false;
+  }
+  return true;
 }
