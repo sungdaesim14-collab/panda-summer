@@ -13,6 +13,8 @@ import { CaveScreen } from "./screens/CaveScreen";
 import { Onboarding } from "./screens/Onboarding";
 import { Graduation } from "./screens/Graduation";
 import { InstallButton } from "./components/InstallButton";
+import { AdminPanel } from "./screens/AdminPanel";
+import { ADMIN_NICK } from "./data/store";
 import { SEASON } from "./game/season";
 import { todayISO } from "./data/useGame";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -125,6 +127,7 @@ function Home({ game }: { game: ReturnType<typeof useGame> }) {
               ? "친구와 함께 쓰는 중이에요 (서버 연결됨)."
               : "지금은 이 기기에만 저장돼요. 항상 같은 기기·브라우저로 들어와 주세요."}
           </div>
+          {data.user.nickname === ADMIN_NICK && <AdminPanel me={data.user.nickname} />}
           <InstallButton subtle />
           {graduable && (
             <button onClick={() => setShowGrad(true)} style={{ ...pill(false), padding: "12px 20px", borderColor: "var(--kin)", color: "var(--kin)" }}>

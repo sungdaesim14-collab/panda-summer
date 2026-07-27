@@ -8,7 +8,7 @@
  * 여러 기기·친구 공유는 서버가 담당한다.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { LocalStore, type Store, type FriendView } from "./store";
+import { LocalStore, type Store, type FriendView, type AdminMember } from "./store";
 import { emptySave, type SaveData, type User, type DayLog, type OwnedCard, type BossClear } from "./types";
 
 export class SupabaseStore implements Store {
@@ -130,6 +130,50 @@ export class SupabaseStore implements Store {
         .sort((a, b) => b.streak - a.streak || b.totalDays - a.totalDays);
     } catch {
       return this.local.friends(nickname);
+    }
+  }
+
+  async touchLastSeen(nickname: string): Promise<void> {
+    this.local.touchLastSeen(nickname);
+    try {
+      await this.sb.from("players").update({ last_seen: new Date().toISOString() }).eq("nickname", nickname);
+    } catch { /* 오프라인이면 다음 접속 때 */ }
+  }
+
+  async adminListMembers(): Promise<AdminMember[]> {
+    try {
+      const [pRes, lRes] = await Promise.all([
+        this.sb.from("players").select("nickname, character, join_date, last_seen"),
+        this.sb.from("day_logs").select("nickname, completed"),
+      ]);
+      if (!pRes.data) return this.local.adminListMembers();
+      const done = new Map<string, number>();
+      for (const r of lRes.data ?? []) {
+        if (r.completed) done.set(r.nickname, (done.get(r.nickname) ?? 0) + 1);
+      }
+      return pRes.data
+        .map((p) => ({
+          nickname: p.nickname,
+          character: p.character || "panda",
+          totalDays: done.get(p.nickname) ?? 0,
+          lastSeen: p.last_seen ?? undefined,
+          joinDate: p.join_date ?? undefined,
+        }))
+        .sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? ""));
+    } catch {
+      return this.local.adminListMembers();
+    }
+  }
+
+  async adminDelete(nickname: string): Promise<{ ok: boolean; msg?: string }> {
+    await this.local.adminDelete(nickname);
+    try {
+      // players 삭제 시 day_logs/cards/boss_clears는 on delete cascade로 함께 삭제됨
+      const { error } = await this.sb.from("players").delete().eq("nickname", nickname);
+      if (error) return { ok: false, msg: "서버에서 삭제하지 못했어요. 잠시 후 다시 시도해 주세요." };
+      return { ok: true };
+    } catch {
+      return { ok: false, msg: "연결을 확인해 주세요." };
     }
   }
 }

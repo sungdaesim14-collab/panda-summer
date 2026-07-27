@@ -27,6 +27,7 @@ export function useGame() {
       const data = await store.load(nick);
       const user = await store.findUser(nick);
       if (!data || !user) return setAuth({ phase: "login" });
+      store.touchLastSeen(nick); // 접속 기록
       if (!user.character) return setAuth({ phase: "chooseChar", nickname: nick });
       setAuth({ phase: "ready", data });
     })();
@@ -51,6 +52,7 @@ export function useGame() {
     const pinHash = await hashPin(nickname, pin);
     if (user.pinHash !== pinHash) return { ok: false, msg: "비밀번호가 틀렸어요." };
     store.remember(user.nickname);
+    store.touchLastSeen(user.nickname); // 접속 기록
     const data = (await store.load(user.nickname)) ?? emptySave(user);
     if (!user.character) { setAuth({ phase: "chooseChar", nickname: user.nickname }); return { ok: true }; }
     setAuth({ phase: "ready", data });

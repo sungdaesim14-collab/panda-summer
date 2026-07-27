@@ -1,4 +1,4 @@
-"""전체 탭 회귀 테스트 — 모든 화면이 에러 없이 렌더되는지."""
+"""관리자(뽀귀) 패널 렌더 확인 — 로컬 데이터로."""
 import pathlib, time, sys
 from playwright.sync_api import sync_playwright
 
@@ -6,21 +6,9 @@ OUT = pathlib.Path(__file__).resolve().parent / "shots"
 OUT.mkdir(exist_ok=True)
 BASE = "http://localhost:5180/"
 
-def seed(pg, days=5):
-    logs = []
-    for i in range(days):
-        d = 25 + i
-        logs.append({"date": f"2026-07-{d:02d}", "missions": ["책 30분 읽기", "명상 1분 하기"],
-                     "done": ["책 30분 읽기", "명상 1분 하기"], "completed": True,
-                     "stars": 5 if i % 3 == 0 else 3, "outcome": "뿌듯", "obstacle": "유튜브 보고 싶어져",
-                     "plan": "폰 멀리", "win": "win" if i % 2 == 0 else "none", "selfPraise": "잘했어",
-                     "note": "재밌었다", "pledged": True, "confessed": False, "savedAt": "2026-07-25T00:00:00Z"})
-    cards = [{"key": k, "kind": "treasure", "gotDate": "2026-07-25", "pos": -1} for k in ["sprout","leaf","dew","stream","stone"][:days]]
-    cave = [{"key": "amethyst", "kind": "cave", "gotDate": "2026-07-27", "pos": 0},
-            {"key": "ruby", "kind": "cave", "gotDate": "2026-07-28", "pos": -1}]
-    return {"version": 1,
-            "user": {"nickname": "별이", "pinHash": "x", "character": "panda", "joinDate": "2026-07-25", "honestyGiven": False},
-            "logs": logs, "cards": cards + cave, "bosses": []}
+def mk(nick, char, days, last):
+    return {"nickname": nick, "pinHash": "x", "character": char, "joinDate": "2026-07-25",
+            "honestyGiven": False, "lastSeen": last}
 
 errors = []
 with sync_playwright() as p:
@@ -30,31 +18,41 @@ with sync_playwright() as p:
     pg.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
     pg.on("console", lambda m: errors.append(m.text) if m.type=="error" and "vibrate" not in m.text else None)
     try:
-        pg.goto(BASE + "?hour=15", timeout=25000)
+        pg.goto(BASE, timeout=25000)
     except Exception as e:
         sys.exit(f"서버 연결 실패: {e}")
     time.sleep(1.2)
-    pg.evaluate("""(s) => {
-      localStorage.clear();
-      localStorage.setItem('panda.token','별이');
-      localStorage.setItem('panda.onboarded','1');
-      localStorage.setItem('panda.users', JSON.stringify({'별이': s.user}));
-      localStorage.setItem('panda.save.별이', JSON.stringify(s));
-    }""", seed(pg))
-    pg.goto(BASE + "?hour=15"); time.sleep(1.4)
 
-    tabs = ["수련", "약속의 산", "보스", "도감", "호흡법", "두뇌 수련", "동굴", "동문", "기록", "설정"]
-    for t in tabs:
-        try:
-            pg.get_by_role("button", name=t, exact=True).click(); time.sleep(0.7)
-            # 화면에 내용이 있는지 (빈 화면 아님)
-            body_len = len(pg.evaluate("document.body.innerText"))
-            print(f"[{t}] 렌더 OK (텍스트 {body_len}자)")
-        except Exception as e:
-            print(f"[{t}] ❌ 실패: {e}")
+    import json
+    now = "2026-07-26T05:00:00Z"
+    users = {
+        "뽀귀": mk("뽀귀", "panda", 3, now),
+        "똑똑별": mk("똑똑별", "owl", 5, "2026-07-26T02:00:00Z"),
+        "동건": mk("동건", "tiger", 1, "2026-07-25T09:00:00Z"),
+    }
+    admin_save = {"version":1,"user":users["뽀귀"],"logs":[
+        {"date":f"2026-07-{25+i}","missions":["책"],"done":["책"],"completed":True,"stars":3,
+         "outcome":"","obstacle":"","plan":"","win":"none","selfPraise":"","note":"","pledged":True,
+         "confessed":False,"savedAt":now} for i in range(3)],"cards":[],"bosses":[]}
+    pg.evaluate("""(d) => {
+      localStorage.clear();
+      localStorage.setItem('panda.token','뽀귀');
+      localStorage.setItem('panda.onboarded','1');
+      localStorage.setItem('panda.users', JSON.stringify(d.users));
+      localStorage.setItem('panda.save.뽀귀', JSON.stringify(d.admin));
+    }""", {"users": users, "admin": admin_save})
+    pg.goto(BASE); time.sleep(1.4)
+
+    pg.get_by_role("button", name="설정", exact=True).click(); time.sleep(0.8)
+    is_admin = pg.get_by_text("관리자 · 회원 관리", exact=False).count() > 0
+    print(f"관리자 패널 표시: {is_admin}")
+    print(f"똑똑별 보임: {pg.get_by_text('똑똑별').count() > 0}")
+    print(f"최종접속 표시: {pg.get_by_text('최종접속', exact=False).count() > 0}")
+    print(f"삭제 버튼: {pg.get_by_role('button', name='삭제').count()}")
+    pg.screenshot(path=str(OUT / "admin.png"), full_page=True)
 
     ov = pg.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth + 1")
-    print(f"\n가로스크롤 = {ov}")
+    print(f"가로스크롤 = {ov}")
     ctx.close(); b.close()
 
 print("\n=== JS 에러 ===")

@@ -30,6 +30,12 @@ export interface Store {
   putLog(nickname: string, log: DayLog): Promise<void>;
   /** 함께 수련하는 친구들 (있으면) */
   friends(nickname: string): Promise<FriendView[]>;
+  /** 접속 시각 갱신 (관리자가 최종 접속 확인) */
+  touchLastSeen(nickname: string): Promise<void>;
+  /** 관리자용 — 전체 회원 목록 + 최종 접속 */
+  adminListMembers(): Promise<AdminMember[]>;
+  /** 관리자용 — 회원 삭제 (관련 데이터 함께) */
+  adminDelete(nickname: string): Promise<{ ok: boolean; msg?: string }>;
 }
 
 export interface FriendView {
@@ -39,6 +45,17 @@ export interface FriendView {
   streak: number;
   isMe: boolean;
 }
+
+export interface AdminMember {
+  nickname: string;
+  character: string;
+  totalDays: number;
+  lastSeen?: string;
+  joinDate?: string;
+}
+
+/** 관리자 닉네임 */
+export const ADMIN_NICK = "뽀귀";
 
 /* ============================================================
    LocalStore — localStorage
@@ -113,6 +130,38 @@ export class LocalStore implements Store {
       });
     }
     return out.sort((a, b) => b.streak - a.streak || b.totalDays - a.totalDays);
+  }
+
+  async touchLastSeen(nickname: string): Promise<void> {
+    const users = this.readUsers();
+    if (users[nickname]) {
+      users[nickname].lastSeen = new Date().toISOString();
+      this.writeUsers(users);
+    }
+  }
+
+  async adminListMembers(): Promise<AdminMember[]> {
+    const users = this.readUsers();
+    const out: AdminMember[] = [];
+    for (const nick of Object.keys(users)) {
+      const d = await this.load(nick);
+      out.push({
+        nickname: nick,
+        character: users[nick].character || "panda",
+        totalDays: d ? d.logs.filter((l) => l.completed).length : 0,
+        lastSeen: users[nick].lastSeen,
+        joinDate: users[nick].joinDate,
+      });
+    }
+    return out.sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? ""));
+  }
+
+  async adminDelete(nickname: string): Promise<{ ok: boolean; msg?: string }> {
+    const users = this.readUsers();
+    delete users[nickname];
+    this.writeUsers(users);
+    try { localStorage.removeItem(prefixData(nickname)); } catch { /* 무시 */ }
+    return { ok: true };
   }
 }
 
