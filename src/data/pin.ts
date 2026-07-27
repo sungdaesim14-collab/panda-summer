@@ -26,5 +26,7 @@ export function isValidPin(pin: string): boolean {
 
 export function isValidNickname(nick: string): boolean {
   const t = nick.trim();
-  return t.length >= 2 && t.length <= 10;
+  if (t.length < 2 || t.length > 10) return false;
+  // 한글·영문·숫자만 (따옴표 등 특수문자 금지 — DB·화면 깨짐 방지)
+  return /^[가-힣a-zA-Z0-9]+$/.test(t);
 }

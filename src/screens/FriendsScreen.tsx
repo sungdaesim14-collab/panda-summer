@@ -21,6 +21,7 @@ export function FriendsScreen({ data }: Props) {
   const [caveOf, setCaveOf] = useState<SaveData | null>(null);
   const [loadingCave, setLoadingCave] = useState<string | null>(null);
 
+  const reload = () => { setFriends(null); store.friends(me).then(setFriends); };
   useEffect(() => {
     store.friends(me).then(setFriends);
   }, [store, me]);
@@ -62,8 +63,14 @@ export function FriendsScreen({ data }: Props) {
         함께 수련하는 동문들이다. <b>경쟁이 아니라 서로 응원</b>하는 것이 대숲의 법도지.
       </Sabu>
 
-      <div style={groupBanner}>
-        🏔️ 우리 모두 함께 <b>{groupTotal}걸음</b>을 올랐다
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ ...groupBanner, flex: 1, marginBottom: 0 }}>
+          🏔️ 우리 모두 함께 <b>{groupTotal}걸음</b>을 올랐다
+        </div>
+        <button onClick={reload} aria-label="동문 새로고침" title="새로고침" style={{
+          flexShrink: 0, width: 40, height: 40, borderRadius: "var(--r-md)",
+          border: "1px solid var(--edge)", background: "var(--surface)", cursor: "pointer", fontSize: 16,
+        }}>↻</button>
       </div>
 
       {others.length === 0 ? (
