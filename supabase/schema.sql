@@ -90,3 +90,14 @@ create policy "update cards"   on cards    for update using (true);
 create policy "insert bosses"  on boss_clears for insert with check (true);
 create policy "update bosses"  on boss_clears for update using (true);
 -- (삭제 정책을 안 만들었으므로 삭제는 기본적으로 거부된다)
+
+-- ============================================================
+--  관리자 기능 추가 (2026-07-26) — 이 부분만 따로 실행해도 됨
+-- ============================================================
+-- 최종 접속 시각 (관리자가 확인)
+alter table players add column if not exists last_seen timestamptz;
+
+-- 회원 삭제 허용 (관리자 패널에서 삭제). players 삭제 시 자식은 cascade.
+--  주의: anon 키로도 삭제가 가능해지지만, 소규모 가족·친척 앱이라 감수한다.
+drop policy if exists "delete players" on players;
+create policy "delete players" on players for delete using (true);

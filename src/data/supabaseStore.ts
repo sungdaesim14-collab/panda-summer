@@ -142,11 +142,15 @@ export class SupabaseStore implements Store {
 
   async adminListMembers(): Promise<AdminMember[]> {
     try {
-      const [pRes, lRes] = await Promise.all([
-        this.sb.from("players").select("nickname, character, join_date, last_seen"),
-        this.sb.from("day_logs").select("nickname, completed"),
-      ]);
+      // last_seen 컬럼이 있으면 함께, 없으면(SQL 미실행) 그것 없이 조회한다.
+      // → SQL을 아직 안 해도 회원 목록은 반드시 나온다 (최종접속만 '기록 없음')
+      let pRes = await this.sb.from("players").select("nickname, character, join_date, last_seen");
+      if (pRes.error) {
+        pRes = await this.sb.from("players").select("nickname, character, join_date");
+      }
+      const lRes = await this.sb.from("day_logs").select("nickname, completed");
       if (!pRes.data) return this.local.adminListMembers();
+
       const done = new Map<string, number>();
       for (const r of lRes.data ?? []) {
         if (r.completed) done.set(r.nickname, (done.get(r.nickname) ?? 0) + 1);
@@ -156,7 +160,7 @@ export class SupabaseStore implements Store {
           nickname: p.nickname,
           character: p.character || "panda",
           totalDays: done.get(p.nickname) ?? 0,
-          lastSeen: p.last_seen ?? undefined,
+          lastSeen: (p as { last_seen?: string }).last_seen ?? undefined,
           joinDate: p.join_date ?? undefined,
         }))
         .sort((a, b) => (b.lastSeen ?? "").localeCompare(a.lastSeen ?? ""));

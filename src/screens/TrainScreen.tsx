@@ -14,16 +14,16 @@ import { fx } from "../game/feedback";
 import { goalForDate } from "../game/dailyGoal";
 import { rollCaveItem, caveItem, myCaveItems, RARITY_META, type CaveItem } from "../game/cave";
 import { drawCaveItem } from "../art/drawCave";
+import { ADMIN_NICK } from "../data/store";
 
 /**
- * 매일의 흐름 — 계획과 결과를 오후 3시로 나눈다.
- *   오전~오후3시: 계획만  (수련 선택 + 작전). 결과는 못 누른다.
- *   오후 3시~   : 결과만  (해낸 것 확인).
+ * 매일의 흐름 — 계획과 결과를 정오(12시)로 나눈다.
+ *   오전(~12시): 계획만  (수련 선택 + 작전). 결과는 못 누른다.
+ *   오후(12시~): 결과만  (해낸 것 확인).
  * 이렇게 시간을 벌려 '저녁에 몰아서 한 것만 계획한 척'을 막는다.
- * (방학이라 아이들이 늦게 일어나므로 마감을 넉넉히 오후 3시로 둔다)
  */
 
-const NOON = 15; // 계획 마감 = 결과 시작 (오후 3시)
+const NOON = 12; // 계획 마감 = 결과 시작 (정오)
 
 /** 현재 시각(시). 개발/확인용으로 URL ?hour=15 로 덮어쓸 수 있다 */
 function currentHour(): number {
@@ -47,7 +47,9 @@ export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
   const TODAY = todayISO();
   const seed = daySeed(TODAY);
   const existing = todayLogOf(data);
-  const beforeNoon = currentHour() < NOON;
+  // 관리자(뽀귀)는 시간 제한 없이 24시간 계획·결과 다 된다 (게이트 끔)
+  const isAdmin = data.user.nickname === ADMIN_NICK;
+  const beforeNoon = isAdmin ? false : currentHour() < NOON;
   const goal = goalForDate(TODAY);
   const [goalReward, setGoalReward] = useState<CaveItem | null>(null);
 
@@ -56,7 +58,7 @@ export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
   const treasure = treasureOfDay(DAY_NO)!;
   const notePrompt = NOTE_PROMPTS[Math.abs(seed) % NOTE_PROMPTS.length];
 
-  const missed = !existing && !beforeNoon; // 계획 없이 정오 지남
+  const missed = !isAdmin && !existing && !beforeNoon; // 계획 없이 정오 지남 (관리자는 예외)
 
   // 첫 화면 결정 (missed면 아래에서 따로 처리하므로 값은 무관)
   const initial: Phase =
@@ -94,7 +96,7 @@ export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
           <div style={{ fontSize: 34 }}>🌙</div>
           <div style={{ fontSize: 16, fontWeight: 800, marginTop: 8 }}>오늘의 계획 시간은 지났구나</div>
           <p style={{ ...hint, marginTop: 8, lineHeight: 1.7 }}>
-            수련의 약속은 <b style={{ color: "var(--ink)" }}>오후 3시 전에 미리</b> 세우는 것이란다.
+            수련의 약속은 <b style={{ color: "var(--ink)" }}>낮 12시 전에 미리</b> 세우는 것이란다.
             먼저 정하고, 하루 동안 해내고, 저녁에 돌아보는 것이지.<br /><br />
             오늘은 쉬어가도 좋다. <b style={{ color: "var(--kin)" }}>내일 아침</b>, 다시 만나자.
           </p>
@@ -156,7 +158,8 @@ export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
       await onSaveLog(planLog);
       setSavingPlan(false);
       fx.select();
-      setPhase("wait");
+      // 관리자는 대기 없이 바로 결과로, 일반은 정오 전이면 대기
+      setPhase(beforeNoon ? "wait" : "today");
     };
     return (
       <Wrap>
@@ -201,7 +204,7 @@ export function TrainScreen({ data, onSaveLog, onAwardCave }: Props) {
           <div style={{ fontSize: 22 }}>☀️</div>
           <p style={{ ...hint, marginTop: 4, lineHeight: 1.7 }}>
             약속을 세웠구나. 이제 <b style={{ color: "var(--ink)" }}>하루 동안 해내면 된다.</b><br />
-            <b style={{ color: "var(--kin)" }}>오후 3시가 지나면</b> 다시 와서 '해냈어요'를 확인하자.
+            <b style={{ color: "var(--kin)" }}>낮 12시가 지나면</b> 다시 와서 '해냈어요'를 확인하자.
           </p>
         </div>
         <button onClick={() => { setPhase("pick"); }} style={ghost}>계획 다시 짜기</button>
@@ -384,7 +387,7 @@ function NoonBadge({ beforeNoon }: { beforeNoon: boolean }) {
       padding: "5px 13px", borderRadius: "var(--r-pill)", border: "1px solid var(--edge)",
       background: "var(--surface)", fontSize: 12, color: "var(--ink-2)", fontWeight: 700,
     }}>
-      {beforeNoon ? "🌅 계획 시간 (~오후 3시)" : "🌇 확인 시간 (오후 3시~)"}
+      {beforeNoon ? "🌅 계획 시간 (~낮 12시)" : "🌇 확인 시간 (낮 12시~)"}
     </div>
   );
 }
